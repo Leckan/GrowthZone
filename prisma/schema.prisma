@@ -1,0 +1,232 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id            String   @id @default(cuid())
+  email         String   @unique
+  passwordHash  String   @map("password_hash")
+  username      String   @unique
+  displayName   String?  @map("display_name")
+  bio           String?
+  avatarUrl     String?  @map("avatar_url")
+  totalPoints   Int      @default(0) @map("total_points")
+  emailVerified Boolean  @default(false) @map("email_verified")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  createdCommunities   Community[]           @relation("CommunityCreator")
+  memberships          CommunityMembership[]
+  posts                Post[]
+  comments             Comment[]
+  progress             UserProgress[]
+  pointsTransactions   PointsTransaction[]
+  subscriptions        Subscription[]
+  postLikes            PostLike[]
+  commentLikes         CommentLike[]
+
+  @@map("users")
+}
+
+model Community {
+  id               String   @id @default(cuid())
+  name             String
+  description      String?
+  slug             String   @unique
+  creatorId        String   @map("creator_id")
+  isPublic         Boolean  @default(true) @map("is_public")
+  requiresApproval Boolean  @default(false) @map("requires_approval")
+  priceMonthly     Decimal? @map("price_monthly") @db.Decimal(10, 2)
+  priceYearly      Decimal? @map("price_yearly") @db.Decimal(10, 2)
+  memberCount      Int      @default(0) @map("member_count")
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  creator      User                  @relation("CommunityCreator", fields: [creatorId], references: [id], onDelete: Cascade)
+  memberships  CommunityMembership[]
+  courses      Course[]
+  posts        Post[]
+  transactions PointsTransaction[]
+  subscriptions Subscription[]
+
+  @@map("communities")
+}
+
+model CommunityMembership {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  communityId String   @map("community_id")
+  role        String   @default("member") // member, moderator, admin
+  status      String   @default("active") // pending, active, suspended
+  joinedAt    DateTime @default(now()) @map("joined_at")
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, communityId])
+  @@map("community_memberships")
+}
+
+model Course {
+  id          String   @id @default(cuid())
+  communityId String   @map("community_id")
+  title       String
+  description String?
+  isPublished Boolean  @default(false) @map("is_published")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  lessons   Lesson[]
+
+  @@map("courses")
+}
+
+model Lesson {
+  id          String   @id @default(cuid())
+  courseId    String   @map("course_id")
+  title       String
+  content     String?
+  contentType String   @default("text") @map("content_type") // text, video, file
+  videoUrl    String?  @map("video_url")
+  fileUrl     String?  @map("file_url")
+  isFree      Boolean  @default(false) @map("is_free")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  course   Course         @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  progress UserProgress[]
+
+  @@map("lessons")
+}
+
+model Post {
+  id           String   @id @default(cuid())
+  communityId  String   @map("community_id")
+  authorId     String   @map("author_id")
+  title        String?
+  content      String
+  postType     String   @default("discussion") @map("post_type") // discussion, announcement
+  likeCount    Int      @default(0) @map("like_count")
+  commentCount Int      @default(0) @map("comment_count")
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  community Community   @relation(fields: [communityId], references: [id], onDelete: Cascade)
+  author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  comments  Comment[]
+  likes     PostLike[]
+
+  @@map("posts")
+}
+
+model Comment {
+  id        String   @id @default(cuid())
+  postId    String   @map("post_id")
+  authorId  String   @map("author_id")
+  parentId  String?  @map("parent_id") // for nested comments
+  content   String
+  likeCount Int      @default(0) @map("like_count")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  post     Post          @relation(fields: [postId], references: [id], onDelete: Cascade)
+  author   User          @relation(fields: [authorId], references: [id], onDelete: Cascade)
+  parent   Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
+  replies  Comment[]     @relation("CommentReplies")
+  likes    CommentLike[]
+
+  @@map("comments")
+}
+
+model UserProgress {
+  id          String    @id @default(cuid())
+  userId      String    @map("user_id")
+  lessonId    String    @map("lesson_id")
+  completedAt DateTime? @map("completed_at")
+  timeSpent   Int       @default(0) @map("time_spent") // in seconds
+
+  // Relations
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lesson Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, lessonId])
+  @@map("user_progress")
+}
+
+model PointsTransaction {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  communityId String   @map("community_id")
+  points      Int
+  reason      String
+  referenceId String?  @map("reference_id") // ID of related entity (post, comment, etc.)
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@map("points_transactions")
+}
+
+model Subscription {
+  id                    String    @id @default(cuid())
+  userId                String    @map("user_id")
+  communityId           String    @map("community_id")
+  stripeSubscriptionId  String?   @unique @map("stripe_subscription_id")
+  status                String    // active, canceled, past_due
+  currentPeriodStart    DateTime? @map("current_period_start")
+  currentPeriodEnd      DateTime? @map("current_period_end")
+  createdAt             DateTime  @default(now()) @map("created_at")
+  updatedAt             DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  community Community @relation(fields: [communityId], references: [id], onDelete: Cascade)
+
+  @@map("subscriptions")
+}
+
+model PostLike {
+  id     String @id @default(cuid())
+  userId String @map("user_id")
+  postId String @map("post_id")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  post Post @relation(fields: [postId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postId])
+  @@map("post_likes")
+}
+
+model CommentLike {
+  id        String @id @default(cuid())
+  userId    String @map("user_id")
+  commentId String @map("comment_id")
+
+  // Relations
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, commentId])
+  @@map("comment_likes")
+}
