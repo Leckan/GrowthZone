@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import prisma from './prisma';
+import { PointsService } from './pointsService';
 
 export interface CreatePostData {
   title?: string;
@@ -90,6 +91,21 @@ export class PostService {
         }
       }
     });
+
+    // Award points for creating a post
+    try {
+      // Check if this is user's first post in the community
+      const isFirstPost = await PointsService.checkFirstTimeBonus(authorId, communityId, 'POST_CREATED');
+      
+      if (isFirstPost) {
+        await PointsService.awardPointsForAction(authorId, communityId, 'FIRST_POST', post.id);
+      } else {
+        await PointsService.awardPointsForAction(authorId, communityId, 'POST_CREATED', post.id);
+      }
+    } catch (error) {
+      // Log error but don't fail the post creation
+      console.error('Failed to award points for post creation:', error);
+    }
 
     return post;
   }
@@ -424,6 +440,13 @@ export class PostService {
         })
       ]);
 
+      // Award points to post author for receiving a like
+      try {
+        await PointsService.awardPointsForAction(post.authorId, post.communityId, 'POST_LIKED', postId);
+      } catch (error) {
+        console.error('Failed to award points for post like:', error);
+      }
+
       return { liked: true, message: 'Post liked successfully' };
     }
   }
@@ -481,6 +504,14 @@ export class PostService {
 
       return newComment;
     });
+
+    // Award points for creating a comment
+    try {
+      await PointsService.awardPointsForAction(authorId, post.communityId, 'COMMENT_CREATED', comment.id);
+    } catch (error) {
+      // Log error but don't fail the comment creation
+      console.error('Failed to award points for comment creation:', error);
+    }
 
     return comment;
   }
@@ -738,6 +769,13 @@ export class PostService {
           data: { likeCount: { increment: 1 } }
         })
       ]);
+
+      // Award points to comment author for receiving a like
+      try {
+        await PointsService.awardPointsForAction(comment.authorId, comment.post.communityId, 'COMMENT_LIKED', commentId);
+      } catch (error) {
+        console.error('Failed to award points for comment like:', error);
+      }
 
       return { liked: true, message: 'Comment liked successfully' };
     }

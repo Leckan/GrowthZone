@@ -1,5 +1,6 @@
 import prisma from './prisma';
 import { Prisma } from '@prisma/client';
+import { PointsService } from './pointsService';
 
 export interface CommunityCreateData {
   name: string;
@@ -377,6 +378,15 @@ export class CommunityService {
 
       return newMembership;
     });
+
+    // Award points for joining community if membership is active
+    if (initialStatus === 'active') {
+      try {
+        await PointsService.awardPointsForAction(userId, communityId, 'COMMUNITY_JOINED');
+      } catch (error) {
+        console.error('Failed to award points for joining community:', error);
+      }
+    }
 
     return membership;
   }

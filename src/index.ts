@@ -17,6 +17,7 @@ import communityRoutes from './routes/communities';
 import courseRoutes from './routes/courses';
 import progressRoutes from './routes/progress';
 import postRoutes from './routes/posts';
+import pointsRoutes from './routes/points';
 
 const app = express();
 const server = createServer(app);
@@ -54,6 +55,7 @@ app.use('/api/v1/communities', communityRoutes);
 app.use('/api/v1/courses', courseRoutes);
 app.use('/api/v1/progress', progressRoutes);
 app.use('/api/v1/posts', postRoutes);
+app.use('/api/v1/points', pointsRoutes);
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
