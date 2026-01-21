@@ -13,6 +13,7 @@
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
+    "db:seed": "ts-node prisma/seed.ts",
     "verify": "ts-node src/scripts/verify-setup.ts"
   },
   "keywords": ["learning", "community", "education", "platform"],
