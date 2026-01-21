@@ -14,6 +14,8 @@ import { notFound } from './middleware/notFound';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import communityRoutes from './routes/communities';
+import courseRoutes from './routes/courses';
+import progressRoutes from './routes/progress';
 
 const app = express();
 const server = createServer(app);
@@ -48,6 +50,8 @@ app.get('/health', (req, res) => {
 app.use('/api/v1/auth', authRoutes);
 app.use('/api/v1/users', userRoutes);
 app.use('/api/v1/communities', communityRoutes);
+app.use('/api/v1/courses', courseRoutes);
+app.use('/api/v1/progress', progressRoutes);
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
