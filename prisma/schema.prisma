@@ -33,6 +33,7 @@ model User {
   subscriptions        Subscription[]
   postLikes            PostLike[]
   commentLikes         CommentLike[]
+  contentReports       ContentReport[]
 
   @@map("users")
 }
@@ -132,6 +133,7 @@ model Post {
   author    User        @relation(fields: [authorId], references: [id], onDelete: Cascade)
   comments  Comment[]
   likes     PostLike[]
+  reports   ContentReport[]
 
   @@map("posts")
 }
@@ -152,6 +154,7 @@ model Comment {
   parent   Comment?      @relation("CommentReplies", fields: [parentId], references: [id])
   replies  Comment[]     @relation("CommentReplies")
   likes    CommentLike[]
+  reports  ContentReport[]
 
   @@map("comments")
 }
@@ -229,4 +232,23 @@ model CommentLike {
 
   @@unique([userId, commentId])
   @@map("comment_likes")
+}
+
+model ContentReport {
+  id          String   @id @default(cuid())
+  reporterId  String   @map("reporter_id")
+  postId      String?  @map("post_id")
+  commentId   String?  @map("comment_id")
+  reason      String   // spam, harassment, inappropriate, misinformation, other
+  description String?
+  status      String   @default("pending") // pending, reviewed, resolved, dismissed
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  reporter User     @relation(fields: [reporterId], references: [id], onDelete: Cascade)
+  post     Post?    @relation(fields: [postId], references: [id], onDelete: Cascade)
+  comment  Comment? @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@map("content_reports")
 }

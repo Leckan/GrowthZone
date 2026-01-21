@@ -402,6 +402,115 @@ export const bulkPublishSchema = z.object({
     })
 });
 
+// Post creation validation schema
+export const createPostSchema = z.object({
+  title: z
+    .string()
+    .min(1, 'Post title is required')
+    .max(200, 'Post title must be less than 200 characters')
+    .optional(),
+  
+  content: z
+    .string()
+    .min(1, 'Post content is required')
+    .max(5000, 'Post content must be less than 5000 characters'),
+  
+  postType: z
+    .enum(['discussion', 'announcement'], {
+      errorMap: () => ({ message: 'Post type must be discussion or announcement' })
+    })
+    .optional()
+    .default('discussion')
+});
+
+// Post update validation schema
+export const updatePostSchema = z.object({
+  title: z
+    .string()
+    .min(1, 'Post title is required')
+    .max(200, 'Post title must be less than 200 characters')
+    .optional(),
+  
+  content: z
+    .string()
+    .min(1, 'Post content is required')
+    .max(5000, 'Post content must be less than 5000 characters')
+    .optional(),
+  
+  postType: z
+    .enum(['discussion', 'announcement'], {
+      errorMap: () => ({ message: 'Post type must be discussion or announcement' })
+    })
+    .optional()
+});
+
+// Comment creation validation schema
+export const createCommentSchema = z.object({
+  content: z
+    .string()
+    .min(1, 'Comment content is required')
+    .max(2000, 'Comment content must be less than 2000 characters'),
+  
+  parentId: z
+    .string()
+    .min(1, 'Parent comment ID cannot be empty')
+    .optional()
+});
+
+// Comment update validation schema
+export const updateCommentSchema = z.object({
+  content: z
+    .string()
+    .min(1, 'Comment content is required')
+    .max(2000, 'Comment content must be less than 2000 characters')
+});
+
+// Post query validation schema
+export const postQuerySchema = z.object({
+  limit: z
+    .string()
+    .regex(/^\d+$/, 'Limit must be a number')
+    .transform(Number)
+    .refine(val => val > 0 && val <= 50, 'Limit must be between 1 and 50')
+    .optional()
+    .or(z.number().min(1).max(50).optional()),
+  
+  offset: z
+    .string()
+    .regex(/^\d+$/, 'Offset must be a number')
+    .transform(Number)
+    .refine(val => val >= 0, 'Offset must be non-negative')
+    .optional()
+    .or(z.number().min(0).optional()),
+  
+  search: z
+    .string()
+    .max(100, 'Search term must be less than 100 characters')
+    .optional(),
+  
+  postType: z
+    .enum(['discussion', 'announcement'])
+    .optional(),
+  
+  sortBy: z
+    .enum(['newest', 'oldest', 'popular'])
+    .optional()
+    .default('newest')
+});
+
+// Content reporting validation schema
+export const reportContentSchema = z.object({
+  reason: z
+    .enum(['spam', 'harassment', 'inappropriate', 'misinformation', 'other'], {
+      errorMap: () => ({ message: 'Reason must be spam, harassment, inappropriate, misinformation, or other' })
+    }),
+  
+  description: z
+    .string()
+    .max(500, 'Description must be less than 500 characters')
+    .optional()
+});
+
 // Validation helper function
 export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): {
   success: boolean;
