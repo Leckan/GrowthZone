@@ -70,7 +70,12 @@ npm run db:generate
 npm run db:push
 ```
 
-5. Start the development server:
+5. Verify the setup:
+```bash
+npm run verify
+```
+
+6. Start the development server:
 ```bash
 npm run dev
 ```
@@ -88,6 +93,7 @@ The server will start on `http://localhost:3000`
 - `npm run db:push` - Push schema changes to database
 - `npm run db:migrate` - Run database migrations
 - `npm run db:studio` - Open Prisma Studio
+- `npm run verify` - Verify project setup and configuration
 
 ## API Endpoints
 

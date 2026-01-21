@@ -16,4 +16,11 @@ module.exports = {
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
   testTimeout: 10000,
+  // Ensure tests run in test environment
+  globalSetup: undefined,
+  globalTeardown: undefined,
+  // Force exit after tests complete
+  forceExit: true,
+  // Detect open handles
+  detectOpenHandles: true,
 };
