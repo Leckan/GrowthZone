@@ -15,12 +15,17 @@ module.exports = {
   coverageDirectory: 'coverage',
   coverageReporters: ['text', 'lcov', 'html'],
   setupFilesAfterEnv: ['<rootDir>/src/test/setup.ts'],
-  testTimeout: 10000,
+  testTimeout: 30000, // Increased for property-based tests
   // Ensure tests run in test environment
-  globalSetup: undefined,
-  globalTeardown: undefined,
+  globalSetup: '<rootDir>/src/test/globalSetup.ts',
+  globalTeardown: '<rootDir>/src/test/globalTeardown.ts',
   // Force exit after tests complete
   forceExit: true,
   // Detect open handles
   detectOpenHandles: true,
+  // Property-based testing configuration
+  testEnvironment: 'node',
+  maxWorkers: 1, // Run tests sequentially for database consistency
+  // Verbose output for property-based test failures
+  verbose: true,
 };
