@@ -88,7 +88,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add content ordering and organization
     - _Requirements: 3.1, 3.2, 3.3_
 
-  - [ ] 6.2 Write property test for content organization hierarchy
+  - [x] 6.2 Write property test for content organization hierarchy
     - **Property 5: Content Organization Hierarchy**
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
 
