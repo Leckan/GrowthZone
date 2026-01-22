@@ -42,7 +42,7 @@ This implementation plan breaks down the community learning platform into discre
     - Set up password hashing with bcrypt
     - _Requirements: 1.1, 1.2, 1.3, 1.4_
 
-  - [ ] 3.2 Write property test for user registration validation
+  - [x] 3.2 Write property test for user registration validation
     - **Property 2: User Registration Validation**
     - **Validates: Requirements 1.1, 1.2**
 
@@ -52,7 +52,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add user activity tracking
     - _Requirements: 1.5, 1.6_
 
-  - [ ]* 3.4 Write property test for profile management consistency
+  - [ ] 3.4 Write property test for profile management consistency
     - **Property 3: Profile Management Consistency**
     - **Validates: Requirements 1.5, 1.6**
 
