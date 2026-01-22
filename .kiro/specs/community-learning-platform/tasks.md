@@ -125,7 +125,7 @@ This implementation plan breaks down the community learning platform into discre
     - Create content reporting mechanisms
     - _Requirements: 4.4, 4.5, 4.6_
 
-  - [ ] 7.4 Write property test for content search and discovery
+  - [x] 7.4 Write property test for content search and discovery
     - **Property 8: Content Search and Discovery**
     - **Validates: Requirements 4.5, 4.6, 8.1, 8.2, 8.3, 8.4, 8.5, 8.6**
 
