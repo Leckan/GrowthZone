@@ -18,6 +18,9 @@ import courseRoutes from './routes/courses';
 import progressRoutes from './routes/progress';
 import postRoutes from './routes/posts';
 import pointsRoutes from './routes/points';
+import paymentRoutes from './routes/payments';
+import webhookRoutes from './routes/webhooks';
+import analyticsRoutes from './routes/analytics';
 
 const app = express();
 const server = createServer(app);
@@ -56,6 +59,9 @@ app.use('/api/v1/courses', courseRoutes);
 app.use('/api/v1/progress', progressRoutes);
 app.use('/api/v1/posts', postRoutes);
 app.use('/api/v1/points', pointsRoutes);
+app.use('/api/v1/payments', paymentRoutes);
+app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/webhooks', webhookRoutes);
 
 // WebSocket connection handling
 io.on('connection', (socket) => {
