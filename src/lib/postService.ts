@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 import prisma from './prisma';
 import { PointsService } from './pointsService';
+import { notificationService, NotificationType } from './notificationService';
 
 export interface CreatePostData {
   title?: string;
@@ -443,6 +444,21 @@ export class PostService {
       // Award points to post author for receiving a like
       try {
         await PointsService.awardPointsForAction(post.authorId, post.communityId, 'POST_LIKED', postId);
+        
+        // Send notification to post author (if not liking their own post)
+        if (post.authorId !== userId) {
+          await notificationService.createNotification({
+            userId: post.authorId,
+            type: NotificationType.POST_LIKE,
+            title: 'Your post was liked!',
+            message: `Someone liked your post: "${post.title || 'Untitled'}"`,
+            data: {
+              postId,
+              communityId: post.communityId,
+              likerId: userId
+            }
+          });
+        }
       } catch (error) {
         console.error('Failed to award points for post like:', error);
       }
@@ -508,6 +524,46 @@ export class PostService {
     // Award points for creating a comment
     try {
       await PointsService.awardPointsForAction(authorId, post.communityId, 'COMMENT_CREATED', comment.id);
+      
+      // Send notification to post author (if not commenting on their own post)
+      if (post.authorId !== authorId) {
+        await notificationService.createNotification({
+          userId: post.authorId,
+          type: NotificationType.COMMENT_REPLY,
+          title: 'New comment on your post',
+          message: `Someone commented on your post: "${post.title || 'Untitled'}"`,
+          data: {
+            postId,
+            commentId: comment.id,
+            communityId: post.communityId,
+            commenterId: authorId
+          }
+        });
+      }
+      
+      // If this is a reply to another comment, notify the parent comment author
+      if (data.parentId) {
+        const parentComment = await prisma.comment.findUnique({
+          where: { id: data.parentId },
+          select: { authorId: true }
+        });
+        
+        if (parentComment && parentComment.authorId !== authorId && parentComment.authorId !== post.authorId) {
+          await notificationService.createNotification({
+            userId: parentComment.authorId,
+            type: NotificationType.COMMENT_REPLY,
+            title: 'Someone replied to your comment',
+            message: `You got a reply on your comment in "${post.title || 'Untitled'}"`,
+            data: {
+              postId,
+              commentId: comment.id,
+              parentCommentId: data.parentId,
+              communityId: post.communityId,
+              replierId: authorId
+            }
+          });
+        }
+      }
     } catch (error) {
       // Log error but don't fail the comment creation
       console.error('Failed to award points for comment creation:', error);

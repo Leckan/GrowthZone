@@ -1,4 +1,5 @@
 import prisma from './prisma';
+import { notificationService, NotificationType } from './notificationService';
 
 export interface CourseCreateData {
   title: string;
@@ -340,6 +341,39 @@ export class CourseService {
         }
       }
     });
+
+    // Send notifications if course was just published
+    if (data.isPublished === true && !course.isPublished) {
+      try {
+        // Get all active community members
+        const memberships = await prisma.communityMembership.findMany({
+          where: {
+            communityId: course.communityId,
+            status: 'active',
+            userId: { not: userId } // Don't notify the course creator
+          },
+          select: { userId: true }
+        });
+
+        // Create notifications for all members
+        const notifications = memberships.map(membership => ({
+          userId: membership.userId,
+          type: NotificationType.COURSE_UPDATE,
+          title: 'New Course Available!',
+          message: `A new course "${updatedCourse.title}" has been published in ${course.community.name}`,
+          data: {
+            courseId,
+            communityId: course.communityId,
+            courseName: updatedCourse.title,
+            communityName: course.community.name
+          }
+        }));
+
+        await notificationService.createBulkNotifications(notifications);
+      } catch (error) {
+        console.error('Failed to send course publication notifications:', error);
+      }
+    }
 
     return updatedCourse;
   }

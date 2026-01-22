@@ -1,6 +1,7 @@
 import prisma from './prisma';
 import { Prisma } from '@prisma/client';
 import { PointsService } from './pointsService';
+import { notificationService, NotificationType } from './notificationService';
 
 export interface CommunityCreateData {
   name: string;
@@ -601,6 +602,28 @@ export class CommunityService {
 
       return updated;
     });
+
+    // Send notification if membership was approved
+    if (targetMembership.status === 'pending' && updates.status === 'active') {
+      try {
+        await notificationService.createNotification({
+          userId: targetUserId,
+          type: NotificationType.MEMBERSHIP_APPROVED,
+          title: 'Membership Approved!',
+          message: `Your request to join "${adminMembership.community.name}" has been approved. Welcome to the community!`,
+          data: {
+            communityId,
+            communityName: adminMembership.community.name,
+            approvedBy: adminUserId
+          }
+        });
+
+        // Award points for joining community
+        await PointsService.awardPointsForAction(targetUserId, communityId, 'COMMUNITY_JOINED');
+      } catch (error) {
+        console.error('Failed to send membership approval notification:', error);
+      }
+    }
 
     return updatedMembership;
   }

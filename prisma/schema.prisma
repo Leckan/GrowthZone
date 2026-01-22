@@ -35,6 +35,8 @@ model User {
   commentLikes         CommentLike[]
   contentReports       ContentReport[]
   auditLogs            AuditLog[]
+  notifications        Notification[]
+  notificationPreferences NotificationPreference?
 
   @@map("users")
 }
@@ -276,4 +278,44 @@ model AuditLog {
   @@index([action])
   @@index([createdAt])
   @@map("audit_logs")
+}
+
+model Notification {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  type        String   // POST_LIKE, COMMENT_REPLY, COURSE_UPDATE, ANNOUNCEMENT, etc.
+  title       String
+  message     String
+  data        Json     @default("{}")  // Additional context data
+  isRead      Boolean  @default(false) @map("is_read")
+  emailSent   Boolean  @default(false) @map("email_sent")
+  createdAt   DateTime @default(now()) @map("created_at")
+  readAt      DateTime? @map("read_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+model NotificationPreference {
+  id                    String  @id @default(cuid())
+  userId                String  @unique @map("user_id")
+  emailEnabled          Boolean @default(true) @map("email_enabled")
+  inAppEnabled          Boolean @default(true) @map("in_app_enabled")
+  postLikes             Boolean @default(true) @map("post_likes")
+  commentReplies        Boolean @default(true) @map("comment_replies")
+  courseUpdates         Boolean @default(true) @map("course_updates")
+  communityAnnouncements Boolean @default(true) @map("community_announcements")
+  weeklyDigest          Boolean @default(true) @map("weekly_digest")
+  createdAt             DateTime @default(now()) @map("created_at")
+  updatedAt             DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
 }

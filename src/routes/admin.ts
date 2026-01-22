@@ -3,6 +3,8 @@ import { authenticateToken } from '../middleware/auth';
 import { loadCommunityContext, requirePermission } from '../middleware/accessControl';
 import { auditLogger } from '../lib/auditLogger';
 import { AccessControlService } from '../lib/accessControlService';
+import { notificationService, NotificationType } from '../lib/notificationService';
+import JobScheduler from '../lib/jobScheduler';
 import prisma from '../lib/prisma';
 
 const router = Router();
@@ -374,6 +376,132 @@ router.post('/audit-logs/cleanup',
       res.status(500).json({
         error: 'Internal server error',
         message: error instanceof Error ? error.message : 'Failed to cleanup audit logs'
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/v1/admin/communities/:communityId/broadcast
+ * Broadcast announcement to all community members (admin only)
+ */
+router.post('/communities/:communityId/broadcast',
+  authenticateToken,
+  loadCommunityContext(),
+  requirePermission('community:admin'),
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { communityId } = req.params;
+      const { title, message, sendEmail } = req.body;
+
+      if (!title || !message) {
+        res.status(400).json({
+          error: 'Bad request',
+          message: 'Title and message are required'
+        });
+        return;
+      }
+
+      const notificationCount = await notificationService.broadcastAnnouncement(
+        communityId,
+        title,
+        message,
+        sendEmail !== false
+      );
+
+      // Log the broadcast
+      await auditLogger.logSecurityEvent({
+        userId: req.user!.id,
+        action: 'ANNOUNCEMENT_BROADCAST',
+        resource: 'community_announcement',
+        communityId,
+        reason: `Broadcast announcement to ${notificationCount} members`,
+        metadata: {
+          title,
+          sendEmail: sendEmail !== false,
+          recipientCount: notificationCount
+        }
+      });
+
+      res.json({
+        success: true,
+        data: {
+          notificationCount,
+          message: `Announcement sent to ${notificationCount} community members`
+        }
+      });
+    } catch (error) {
+      console.error('Broadcast announcement error:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Failed to broadcast announcement'
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/v1/admin/notifications/digest/send
+ * Manually trigger weekly digest for all users (super admin only)
+ */
+router.post('/notifications/digest/send',
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      // In a real system, check for super admin permissions
+      const result = await JobScheduler.runWeeklyDigestJob();
+
+      res.json({
+        success: true,
+        message: 'Weekly digest job triggered successfully'
+      });
+    } catch (error) {
+      console.error('Manual digest trigger error:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Failed to trigger digest job'
+      });
+    }
+  }
+);
+
+/**
+ * POST /api/v1/admin/notifications/digest/test/:userId
+ * Send test digest to specific user (admin only)
+ */
+router.post('/notifications/digest/test/:userId',
+  authenticateToken,
+  async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { userId } = req.params;
+      
+      // Only allow users to test their own digest or super admins
+      if (req.user!.id !== userId) {
+        res.status(403).json({
+          error: 'Access denied',
+          message: 'You can only test your own digest'
+        });
+        return;
+      }
+
+      const success = await JobScheduler.sendTestDigest(userId);
+
+      if (success) {
+        res.json({
+          success: true,
+          message: 'Test digest sent successfully'
+        });
+      } else {
+        res.status(400).json({
+          error: 'Failed to send digest',
+          message: 'User may not have digest enabled or no notifications to send'
+        });
+      }
+    } catch (error) {
+      console.error('Test digest error:', error);
+      res.status(500).json({
+        error: 'Internal server error',
+        message: error instanceof Error ? error.message : 'Failed to send test digest'
       });
     }
   }

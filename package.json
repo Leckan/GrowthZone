@@ -14,7 +14,8 @@
     "db:migrate": "prisma migrate dev",
     "db:studio": "prisma studio",
     "db:seed": "ts-node prisma/seed.ts",
-    "verify": "ts-node src/scripts/verify-setup.ts"
+    "verify": "ts-node src/scripts/verify-setup.ts",
+    "digest:send": "ts-node src/scripts/send-weekly-digest.ts"
   },
   "keywords": [
     "learning",
@@ -26,12 +27,14 @@
   "license": "MIT",
   "dependencies": {
     "@prisma/client": "^5.7.1",
+    "@types/nodemailer": "^7.0.5",
     "bcryptjs": "^2.4.3",
     "cors": "^2.8.5",
     "dotenv": "^16.3.1",
     "express": "^4.18.2",
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
+    "nodemailer": "^7.0.12",
     "prisma": "^5.7.1",
     "socket.io": "^4.7.4",
     "stripe": "^20.2.0",

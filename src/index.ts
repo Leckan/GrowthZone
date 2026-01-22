@@ -22,6 +22,8 @@ import paymentRoutes from './routes/payments';
 import webhookRoutes from './routes/webhooks';
 import analyticsRoutes from './routes/analytics';
 import adminRoutes from './routes/admin';
+import notificationRoutes from './routes/notifications';
+import JobScheduler from './lib/jobScheduler';
 
 const app = express();
 const server = createServer(app);
@@ -63,6 +65,7 @@ app.use('/api/v1/points', pointsRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/admin', adminRoutes);
+app.use('/api/v1/notifications', notificationRoutes);
 app.use('/webhooks', webhookRoutes);
 
 // WebSocket connection handling
@@ -97,6 +100,12 @@ if (process.env.NODE_ENV !== 'test') {
     console.log(`🚀 Server running on port ${PORT}`);
     console.log(`📊 Environment: ${process.env.NODE_ENV}`);
     console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+    
+    // Start background jobs in development for testing
+    if (process.env.NODE_ENV === 'development') {
+      console.log('📧 Starting notification jobs...');
+      // Don't auto-start in development, let users trigger manually
+    }
   });
 }
 
