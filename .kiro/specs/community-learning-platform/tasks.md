@@ -52,7 +52,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add user activity tracking
     - _Requirements: 1.5, 1.6_
 
-  - [ ] 3.4 Write property test for profile management consistency
+  - [x] 3.4 Write property test for profile management consistency
     - **Property 3: Profile Management Consistency**
     - **Validates: Requirements 1.5, 1.6**
 
@@ -66,7 +66,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add community visibility and pricing controls
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ]* 5.2 Write property test for community creation and configuration
+  - [ ] 5.2 Write property test for community creation and configuration
     - **Property 4: Community Creation and Configuration**
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6**
 
