@@ -66,7 +66,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add community visibility and pricing controls
     - _Requirements: 2.1, 2.2, 2.3, 2.4_
 
-  - [ ] 5.2 Write property test for community creation and configuration
+  - [x] 5.2 Write property test for community creation and configuration
     - **Property 4: Community Creation and Configuration**
     - **Validates: Requirements 2.1, 2.2, 2.3, 2.4, 2.5, 2.6**
 
@@ -76,7 +76,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add member removal and suspension capabilities
     - _Requirements: 2.5, 2.6, 6.1, 6.3, 6.5_
 
-  - [ ]* 5.4 Write unit tests for member management
+  - [ ] 5.4 Write unit tests for member management
     - Test membership workflows and role assignments
     - Test access control and permissions
     - _Requirements: 2.5, 2.6, 6.1, 6.3_
@@ -88,7 +88,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add content ordering and organization
     - _Requirements: 3.1, 3.2, 3.3_
 
-  - [ ]* 6.2 Write property test for content organization hierarchy
+  - [ ] 6.2 Write property test for content organization hierarchy
     - **Property 5: Content Organization Hierarchy**
     - **Validates: Requirements 3.1, 3.2, 3.3, 3.4, 3.5**
 
