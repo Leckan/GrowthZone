@@ -115,7 +115,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add engagement tracking (likes, reactions)
     - _Requirements: 4.1, 4.2, 4.3_
 
-  - [ ] 7.2 Write property test for discussion thread integrity
+  - [x] 7.2 Write property test for discussion thread integrity
     - **Property 7: Discussion Thread Integrity**
     - **Validates: Requirements 4.1, 4.2, 4.3, 4.4**
 
