@@ -1,6 +1,18 @@
 import prisma from './prisma';
 import { emailService, EmailOptions } from './emailService';
 
+// Forward declaration to avoid circular dependency
+interface ISocketService {
+  sendUserNotification(userId: string, notification: any): void;
+}
+
+// Store socket service instance
+let socketServiceInstance: ISocketService | null = null;
+
+export function setNotificationSocketService(socketService: ISocketService) {
+  socketServiceInstance = socketService;
+}
+
 export interface NotificationData {
   userId: string;
   type: NotificationType;
@@ -38,6 +50,19 @@ class NotificationService {
       // Send email if requested and user preferences allow it
       if (data.sendEmail !== false) {
         await this.sendEmailNotification(data.userId, data.type, data.title, data.message, data.data);
+      }
+
+      // Send real-time notification via WebSocket
+      if (socketServiceInstance) {
+        socketServiceInstance.sendUserNotification(data.userId, {
+          id: notification.id,
+          type: notification.type,
+          title: notification.title,
+          message: notification.message,
+          data: notification.data,
+          createdAt: notification.createdAt,
+          read: notification.isRead
+        });
       }
 
       return notification.id;

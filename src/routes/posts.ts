@@ -85,21 +85,10 @@ router.post('/community/:communityId', authenticateToken, async (req: Request, r
 
     const post = await PostService.createPost(communityId, req.user!.id, validation.data!);
 
-    // Emit real-time event for new post
-    const io = req.app.get('io');
-    if (io) {
-      io.to(`community-${communityId}`).emit('community:new_post', {
-        post: {
-          id: post.id,
-          title: post.title,
-          content: post.content,
-          postType: post.postType,
-          author: post.author,
-          createdAt: post.createdAt,
-          likeCount: post.likeCount,
-          commentCount: post.commentCount
-        }
-      });
+    // Emit real-time event for new post using SocketService
+    const socketService = req.app.get('socketService');
+    if (socketService) {
+      socketService.broadcastNewPost(communityId, post);
     }
 
     res.status(201).json({
@@ -378,21 +367,12 @@ router.post('/:id/comments', authenticateToken, async (req: Request, res: Respon
 
     const comment = await PostService.createComment(id, req.user!.id, validation.data!);
 
-    // Emit real-time event for new comment
-    const io = req.app.get('io');
-    if (io) {
+    // Emit real-time event for new comment using SocketService
+    const socketService = req.app.get('socketService');
+    if (socketService) {
       // Get the post to find the community ID
       const post = await PostService.getPost(id, req.user!.id);
-      io.to(`community-${post.communityId}`).emit('community:new_comment', {
-        postId: id,
-        comment: {
-          id: comment.id,
-          content: comment.content,
-          author: comment.author,
-          createdAt: comment.createdAt,
-          parentId: comment.parentId
-        }
-      });
+      socketService.broadcastNewComment(post.communityId, id, comment);
     }
 
     res.status(201).json({

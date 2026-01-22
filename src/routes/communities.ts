@@ -346,6 +346,20 @@ router.post('/:id/join', authenticateToken, async (req: Request, res: Response):
     
     const membership = await CommunityService.requestMembership(id, req.user!.id);
 
+    // Broadcast member joined event if membership is active
+    if (membership.status === 'active') {
+      const socketService = req.app.get('socketService');
+      if (socketService) {
+        socketService.broadcastMemberJoined(id, {
+          id: membership.user.id,
+          username: membership.user.username,
+          displayName: membership.user.displayName,
+          avatarUrl: membership.user.avatarUrl,
+          joinedAt: membership.joinedAt
+        });
+      }
+    }
+
     const message = membership.status === 'pending' 
       ? 'Membership request submitted for approval'
       : 'Successfully joined community';
@@ -394,6 +408,16 @@ router.delete('/:id/leave', authenticateToken, async (req: Request, res: Respons
     const { id } = req.params;
     
     const result = await CommunityService.leaveCommunity(id, req.user!.id);
+
+    // Broadcast member left event
+    const socketService = req.app.get('socketService');
+    if (socketService) {
+      socketService.broadcastMemberLeft(id, {
+        id: req.user!.id,
+        username: req.user!.username,
+        displayName: req.user!.displayName
+      });
+    }
 
     res.json({
       success: true,

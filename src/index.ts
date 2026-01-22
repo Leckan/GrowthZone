@@ -25,14 +25,19 @@ import adminRoutes from './routes/admin';
 import notificationRoutes from './routes/notifications';
 import recommendationRoutes from './routes/recommendations';
 import JobScheduler from './lib/jobScheduler';
+import { SocketService } from './lib/socketService';
+import { setSocketService } from './lib/pointsService';
+import { setNotificationSocketService } from './lib/notificationService';
 
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
   cors: {
     origin: process.env.NODE_ENV === 'production' ? false : ['http://localhost:3000', 'http://localhost:3001'],
-    methods: ['GET', 'POST']
-  }
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  allowEIO3: true
 });
 
 const PORT = process.env.PORT || 3000;
@@ -70,27 +75,16 @@ app.use('/api/v1/notifications', notificationRoutes);
 app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/webhooks', webhookRoutes);
 
-// WebSocket connection handling
-io.on('connection', (socket) => {
-  console.log('User connected:', socket.id);
-  
-  socket.on('join-community', (communityId: string) => {
-    socket.join(`community-${communityId}`);
-    console.log(`User ${socket.id} joined community ${communityId}`);
-  });
-  
-  socket.on('leave-community', (communityId: string) => {
-    socket.leave(`community-${communityId}`);
-    console.log(`User ${socket.id} left community ${communityId}`);
-  });
-  
-  socket.on('disconnect', () => {
-    console.log('User disconnected:', socket.id);
-  });
-});
+// WebSocket service initialization
+const socketService = new SocketService(io);
 
-// Store io instance for use in other modules
+// Set socket service for other modules
+setSocketService(socketService);
+setNotificationSocketService(socketService);
+
+// Store both io instance and socketService for use in other modules
 app.set('io', io);
+app.set('socketService', socketService);
 
 // Error handling middleware (must be last)
 app.use(notFound);

@@ -1,6 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 import prisma from './prisma';
 
+// Forward declaration to avoid circular dependency
+interface ISocketService {
+  broadcastPointsAwarded(userId: string, communityId: string, points: number, reason: string): void;
+}
+
+// Store socket service instance
+let socketServiceInstance: ISocketService | null = null;
+
+export function setSocketService(socketService: ISocketService) {
+  socketServiceInstance = socketService;
+}
+
 export interface PointsRule {
   action: string;
   points: number;
@@ -179,6 +191,16 @@ export class PointsService {
         newTotalPoints: updatedUser.totalPoints
       };
     });
+
+    // Broadcast points awarded event via WebSocket
+    if (socketServiceInstance) {
+      socketServiceInstance.broadcastPointsAwarded(
+        data.userId,
+        data.communityId,
+        data.points,
+        data.reason
+      );
+    }
 
     return transaction;
   }

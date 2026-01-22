@@ -1,8 +1,11 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { SocketProvider } from './contexts/SocketContext';
 import { Navigation } from './components/Navigation';
 import { ProtectedRoute } from './components/ProtectedRoute';
+import { NotificationToast } from './components/NotificationToast';
+import { PointsNotification } from './components/PointsNotification';
 import { LoginPage } from './pages/LoginPage';
 import { RegisterPage } from './pages/RegisterPage';
 import { ProfilePage } from './pages/ProfilePage';
@@ -43,35 +46,41 @@ const Home = () => (
 function App() {
   return (
     <AuthProvider>
-      <Router>
-        <div className="App">
-          <Routes>
-            <Route path="/" element={<Home />} />
-            <Route path="/login" element={<LoginPage />} />
-            <Route path="/register" element={<RegisterPage />} />
-            <Route path="/communities" element={<CommunitiesPage />} />
-            <Route path="/communities/:id" element={<CommunityDetailPage />} />
-            <Route path="/communities/:communityId/feed" element={<FeedPage />} />
-            <Route path="/courses/:id" element={<CourseDetailPage />} />
-            <Route
-              path="/communities/create"
-              element={
-                <ProtectedRoute>
-                  <CreateCommunityPage />
-                </ProtectedRoute>
-              }
-            />
-            <Route
-              path="/profile"
-              element={
-                <ProtectedRoute>
-                  <ProfilePage />
-                </ProtectedRoute>
-              }
-            />
-          </Routes>
-        </div>
-      </Router>
+      <SocketProvider>
+        <Router>
+          <div className="App">
+            <Routes>
+              <Route path="/" element={<Home />} />
+              <Route path="/login" element={<LoginPage />} />
+              <Route path="/register" element={<RegisterPage />} />
+              <Route path="/communities" element={<CommunitiesPage />} />
+              <Route path="/communities/:id" element={<CommunityDetailPage />} />
+              <Route path="/communities/:communityId/feed" element={<FeedPage />} />
+              <Route path="/courses/:id" element={<CourseDetailPage />} />
+              <Route
+                path="/communities/create"
+                element={
+                  <ProtectedRoute>
+                    <CreateCommunityPage />
+                  </ProtectedRoute>
+                }
+              />
+              <Route
+                path="/profile"
+                element={
+                  <ProtectedRoute>
+                    <ProfilePage />
+                  </ProtectedRoute>
+                }
+              />
+            </Routes>
+            
+            {/* Global Real-time Components */}
+            <NotificationToast />
+            <PointsNotification />
+          </div>
+        </Router>
+      </SocketProvider>
     </AuthProvider>
   );
 }
