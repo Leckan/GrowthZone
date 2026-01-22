@@ -76,7 +76,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add member removal and suspension capabilities
     - _Requirements: 2.5, 2.6, 6.1, 6.3, 6.5_
 
-  - [ ] 5.4 Write unit tests for member management
+  - [x] 5.4 Write unit tests for member management
     - Test membership workflows and role assignments
     - Test access control and permissions
     - _Requirements: 2.5, 2.6, 6.1, 6.3_
@@ -104,7 +104,7 @@ This implementation plan breaks down the community learning platform into discre
     - Implement progress analytics
     - _Requirements: 3.6_
 
-  - [ ]* 6.5 Write property test for progress tracking consistency
+  - [ ] 6.5 Write property test for progress tracking consistency
     - **Property 6: Progress Tracking Consistency**
     - **Validates: Requirements 3.6**
 
