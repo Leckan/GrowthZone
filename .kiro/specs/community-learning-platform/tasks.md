@@ -220,14 +220,14 @@ This implementation plan breaks down the community learning platform into discre
     - Test notification preference handling
     - _Requirements: 9.2, 9.3_
 
-- [ ] 13. Search and Discovery Features
-  - [ ] 13.1 Implement community search and discovery
+- [x] 13. Search and Discovery Features
+  - [x] 13.1 Implement community search and discovery
     - Create community search endpoints
     - Implement category-based browsing
     - Add filtering and recommendation systems
     - _Requirements: 8.1, 8.2, 8.3, 8.4, 8.5_
 
-  - [ ] 13.2 Add bookmarking and user preferences
+  - [x] 13.2 Add bookmarking and user preferences
     - Implement community bookmarking
     - Create user interest tracking
     - Add personalized recommendations

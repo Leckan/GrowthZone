@@ -116,6 +116,12 @@ export const createCommunitySchema = z.object({
       'Slug can only contain lowercase letters, numbers, and hyphens'
     ),
   
+  category: z
+    .string()
+    .min(1, 'Category is required')
+    .max(50, 'Category must be less than 50 characters')
+    .optional(),
+  
   isPublic: z
     .boolean()
     .optional()
@@ -150,6 +156,12 @@ export const updateCommunitySchema = z.object({
   description: z
     .string()
     .max(1000, 'Description must be less than 1000 characters')
+    .optional(),
+  
+  category: z
+    .string()
+    .min(1, 'Category cannot be empty')
+    .max(50, 'Category must be less than 50 characters')
     .optional(),
   
   isPublic: z
@@ -200,7 +212,74 @@ export const communityQuerySchema = z.object({
     .string()
     .transform(val => val === 'true')
     .optional()
+    .or(z.boolean().optional()),
+  
+  category: z
+    .string()
+    .max(50, 'Category must be less than 50 characters')
+    .optional(),
+  
+  priceRange: z
+    .enum(['free', 'paid', 'under-50', '50-100', 'over-100'])
+    .optional(),
+  
+  memberCount: z
+    .enum(['small', 'medium', 'large'])
+    .optional(),
+  
+  sortBy: z
+    .enum(['newest', 'oldest', 'popular', 'members', 'name'])
+    .optional()
+    .default('newest')
+});
+
+// Community search validation schema
+export const communitySearchSchema = z.object({
+  query: z
+    .string()
+    .min(1, 'Search query is required')
+    .max(100, 'Search query must be less than 100 characters'),
+  
+  limit: z
+    .string()
+    .regex(/^\d+$/, 'Limit must be a number')
+    .transform(Number)
+    .refine(val => val > 0 && val <= 50, 'Limit must be between 1 and 50')
+    .optional()
+    .or(z.number().min(1).max(50).optional()),
+  
+  offset: z
+    .string()
+    .regex(/^\d+$/, 'Offset must be a number')
+    .transform(Number)
+    .refine(val => val >= 0, 'Offset must be non-negative')
+    .optional()
+    .or(z.number().min(0).optional()),
+  
+  category: z.string().optional(),
+  priceRange: z.enum(['free', 'paid', 'under-50', '50-100', 'over-100']).optional(),
+  memberCount: z.enum(['small', 'medium', 'large']).optional(),
+  isPublic: z
+    .string()
+    .transform(val => val === 'true')
+    .optional()
     .or(z.boolean().optional())
+});
+
+// Community discovery validation schema
+export const communityDiscoverySchema = z.object({
+  limit: z
+    .string()
+    .regex(/^\d+$/, 'Limit must be a number')
+    .transform(Number)
+    .refine(val => val > 0 && val <= 20, 'Limit must be between 1 and 20')
+    .optional()
+    .or(z.number().min(1).max(20).optional()),
+  
+  type: z
+    .enum(['trending', 'recommended', 'popular', 'new'])
+    .optional()
+    .default('trending')
 });
 
 // Member management validation schemas

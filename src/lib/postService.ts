@@ -2,6 +2,7 @@ import { PrismaClient } from '@prisma/client';
 import prisma from './prisma';
 import { PointsService } from './pointsService';
 import { notificationService, NotificationType } from './notificationService';
+import { RecommendationService } from './recommendationService';
 
 export interface CreatePostData {
   title?: string;
@@ -103,9 +104,12 @@ export class PostService {
       } else {
         await PointsService.awardPointsForAction(authorId, communityId, 'POST_CREATED', post.id);
       }
+      
+      // Track user interest in this community's category
+      await RecommendationService.updateInterestsFromEngagement(authorId, communityId, 'post');
     } catch (error) {
       // Log error but don't fail the post creation
-      console.error('Failed to award points for post creation:', error);
+      console.error('Failed to award points or track interests for post creation:', error);
     }
 
     return post;

@@ -23,6 +23,7 @@ import webhookRoutes from './routes/webhooks';
 import analyticsRoutes from './routes/analytics';
 import adminRoutes from './routes/admin';
 import notificationRoutes from './routes/notifications';
+import recommendationRoutes from './routes/recommendations';
 import JobScheduler from './lib/jobScheduler';
 
 const app = express();
@@ -66,6 +67,7 @@ app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
 app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/notifications', notificationRoutes);
+app.use('/api/v1/recommendations', recommendationRoutes);
 app.use('/webhooks', webhookRoutes);
 
 // WebSocket connection handling

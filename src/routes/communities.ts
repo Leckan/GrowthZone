@@ -5,12 +5,135 @@ import {
   createCommunitySchema, 
   updateCommunitySchema, 
   communityQuerySchema,
+  communitySearchSchema,
+  communityDiscoverySchema,
   memberRoleUpdateSchema,
   memberStatusUpdateSchema
 } from '../lib/validation';
 import { CommunityService } from '../lib/communityService';
 
 const router = Router();
+
+/**
+ * GET /api/v1/communities/bookmarks
+ * Get user's bookmarked communities
+ */
+router.get('/bookmarks', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const validation = validateRequest(communityQuerySchema, req.query);
+    
+    if (!validation.success) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: validation.errors
+      });
+      return;
+    }
+
+    const options: any = validation.data || {};
+    
+    const result = await CommunityService.getUserBookmarks(req.user!.id, options);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Get bookmarks error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Failed to fetch bookmarks'
+    });
+  }
+});
+
+/**
+ * GET /api/v1/communities/search
+ * Search communities with advanced filtering
+ */
+router.get('/search', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const validation = validateRequest(communitySearchSchema, req.query);
+    
+    if (!validation.success) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: validation.errors
+      });
+      return;
+    }
+
+    const result = await CommunityService.searchCommunities(validation.data as any);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Search communities error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Failed to search communities'
+    });
+  }
+});
+
+/**
+ * GET /api/v1/communities/discover
+ * Get community discovery recommendations
+ */
+router.get('/discover', optionalAuth, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const validation = validateRequest(communityDiscoverySchema, req.query);
+    
+    if (!validation.success) {
+      res.status(400).json({
+        error: 'Validation failed',
+        details: validation.errors
+      });
+      return;
+    }
+
+    const options: any = validation.data || {};
+    if (req.user) {
+      options.userId = req.user.id;
+    }
+
+    const result = await CommunityService.getDiscoveryCommunities(options);
+
+    res.json({
+      success: true,
+      data: result
+    });
+  } catch (error) {
+    console.error('Discover communities error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Failed to get discovery communities'
+    });
+  }
+});
+
+/**
+ * GET /api/v1/communities/categories
+ * Get available community categories
+ */
+router.get('/categories', async (req: Request, res: Response): Promise<void> => {
+  try {
+    const categories = await CommunityService.getCategories();
+
+    res.json({
+      success: true,
+      data: categories
+    });
+  } catch (error) {
+    console.error('Get categories error:', error);
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Failed to fetch categories'
+    });
+  }
+});
 
 /**
  * GET /api/v1/communities
@@ -506,6 +629,81 @@ router.delete('/:id/members/:userId', authenticateToken, async (req: Request, re
     res.status(500).json({
       error: 'Internal server error',
       message: error instanceof Error ? error.message : 'Failed to remove member'
+    });
+  }
+});
+
+/**
+ * POST /api/v1/communities/:id/bookmark
+ * Bookmark a community
+ */
+router.post('/:id/bookmark', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    const bookmark = await CommunityService.bookmarkCommunity(req.user!.id, id);
+
+    res.status(201).json({
+      success: true,
+      data: bookmark,
+      message: 'Community bookmarked successfully'
+    });
+  } catch (error) {
+    console.error('Bookmark community error:', error);
+    
+    if (error instanceof Error) {
+      if (error.message === 'Community not found or not accessible') {
+        res.status(404).json({
+          error: 'Not found',
+          message: error.message
+        });
+        return;
+      }
+      
+      if (error.message === 'Community is already bookmarked') {
+        res.status(409).json({
+          error: 'Conflict',
+          message: error.message
+        });
+        return;
+      }
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Failed to bookmark community'
+    });
+  }
+});
+
+/**
+ * DELETE /api/v1/communities/:id/bookmark
+ * Remove bookmark from a community
+ */
+router.delete('/:id/bookmark', authenticateToken, async (req: Request, res: Response): Promise<void> => {
+  try {
+    const { id } = req.params;
+    
+    const result = await CommunityService.removeBookmark(req.user!.id, id);
+
+    res.json({
+      success: true,
+      message: result.message
+    });
+  } catch (error) {
+    console.error('Remove bookmark error:', error);
+    
+    if (error instanceof Error && error.message === 'Bookmark not found') {
+      res.status(404).json({
+        error: 'Not found',
+        message: error.message
+      });
+      return;
+    }
+
+    res.status(500).json({
+      error: 'Internal server error',
+      message: error instanceof Error ? error.message : 'Failed to remove bookmark'
     });
   }
 });
