@@ -511,6 +511,50 @@ export const reportContentSchema = z.object({
     .optional()
 });
 
+// Audit log query validation schema
+export const auditLogQuerySchema = z.object({
+  limit: z
+    .string()
+    .regex(/^\d+$/, 'Limit must be a number')
+    .transform(Number)
+    .refine(val => val > 0 && val <= 100, 'Limit must be between 1 and 100')
+    .optional(),
+  
+  offset: z
+    .string()
+    .regex(/^\d+$/, 'Offset must be a number')
+    .transform(Number)
+    .refine(val => val >= 0, 'Offset must be non-negative')
+    .optional(),
+  
+  action: z
+    .string()
+    .max(50, 'Action filter must be less than 50 characters')
+    .optional(),
+  
+  resource: z
+    .string()
+    .max(100, 'Resource filter must be less than 100 characters')
+    .optional(),
+  
+  userId: z
+    .string()
+    .min(1, 'User ID cannot be empty')
+    .optional(),
+  
+  startDate: z
+    .string()
+    .datetime('Invalid start date format')
+    .transform(val => new Date(val))
+    .optional(),
+  
+  endDate: z
+    .string()
+    .datetime('Invalid end date format')
+    .transform(val => new Date(val))
+    .optional()
+});
+
 // Validation helper function
 export function validateRequest<T>(schema: z.ZodSchema<T>, data: unknown): {
   success: boolean;

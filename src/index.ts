@@ -21,6 +21,7 @@ import pointsRoutes from './routes/points';
 import paymentRoutes from './routes/payments';
 import webhookRoutes from './routes/webhooks';
 import analyticsRoutes from './routes/analytics';
+import adminRoutes from './routes/admin';
 
 const app = express();
 const server = createServer(app);
@@ -61,6 +62,7 @@ app.use('/api/v1/posts', postRoutes);
 app.use('/api/v1/points', pointsRoutes);
 app.use('/api/v1/payments', paymentRoutes);
 app.use('/api/v1/analytics', analyticsRoutes);
+app.use('/api/v1/admin', adminRoutes);
 app.use('/webhooks', webhookRoutes);
 
 // WebSocket connection handling
