@@ -149,7 +149,7 @@ This implementation plan breaks down the community learning platform into discre
     - Add milestone tracking
     - _Requirements: 5.4, 5.6_
 
-  - [ ] 9.4 Write unit tests for leaderboard calculations
+  - [x] 9.4 Write unit tests for leaderboard calculations
     - Test leaderboard ranking algorithms
     - Test achievement badge awarding
     - _Requirements: 5.4, 5.6_
