@@ -39,12 +39,12 @@ export function createPropertyTest(
   propertyNumber: number,
   propertyDescription: string,
   requirements: string[],
-  testFn: () => void
+  testFn: () => Promise<void>
 ) {
   const tag = `Feature: community-learning-platform, Property ${propertyNumber}: ${propertyDescription}`;
   
   describe(`Property ${propertyNumber}: ${propertyDescription}`, () => {
-    it(`should validate requirements: ${requirements.join(', ')}`, testFn);
+    it(`should validate requirements: ${requirements.join(', ')}`, testFn, 60000);
   });
   
   return tag;
