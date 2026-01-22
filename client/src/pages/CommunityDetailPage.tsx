@@ -30,7 +30,7 @@ export function CommunityDetailPage() {
       if (response.data) {
         setCommunity(response.data);
       } else {
-        setError(response.error || 'Failed to load community');
+        setError(response.error?.message || 'Failed to load community');
       }
     } catch (err) {
       setError('An error occurred while loading the community');

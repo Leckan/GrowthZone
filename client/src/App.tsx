@@ -2,6 +2,7 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
 import { SocketProvider } from './contexts/SocketContext';
+import { ErrorBoundary } from './components/ErrorBoundary';
 import { Navigation } from './components/Navigation';
 import { ProtectedRoute } from './components/ProtectedRoute';
 import { NotificationToast } from './components/NotificationToast';
@@ -14,6 +15,7 @@ import { CreateCommunityPage } from './pages/CreateCommunityPage';
 import { CommunityDetailPage } from './pages/CommunityDetailPage';
 import { CourseDetailPage } from './pages/CourseDetailPage';
 import { FeedPage } from './pages/FeedPage';
+import { useGlobalErrorHandler } from './hooks/useGlobalErrorHandler';
 import './App.css';
 
 // Home page component
@@ -43,45 +45,92 @@ const Home = () => (
   </div>
 );
 
+// Main App component with error handling
+const AppContent = () => {
+  // Set up global error handling
+  useGlobalErrorHandler({
+    onAuthError: (error) => {
+      console.warn('Authentication error detected:', error.message);
+      // The API service already handles token clearing and redirects
+    },
+    onNetworkError: (error) => {
+      console.error('Network error detected:', error.message);
+      // Show user-friendly network error notification
+      const event = new CustomEvent('show-error-notification', {
+        detail: { 
+          message: 'Connection problem detected. Please check your internet connection.',
+          details: error.message 
+        }
+      });
+      window.dispatchEvent(event);
+    },
+    onUnhandledError: (error) => {
+      console.error('Unhandled error detected:', error);
+      // In production, you might want to send this to an error reporting service
+      if (process.env.NODE_ENV === 'production') {
+        // Example: Send to error reporting service
+        // errorReportingService.captureException(error);
+      }
+    }
+  });
+
+  return (
+    <div className="App">
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/login" element={<LoginPage />} />
+        <Route path="/register" element={<RegisterPage />} />
+        <Route path="/communities" element={<CommunitiesPage />} />
+        <Route path="/communities/:id" element={<CommunityDetailPage />} />
+        <Route path="/communities/:communityId/feed" element={<FeedPage />} />
+        <Route path="/courses/:id" element={<CourseDetailPage />} />
+        <Route
+          path="/communities/create"
+          element={
+            <ProtectedRoute>
+              <CreateCommunityPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/profile"
+          element={
+            <ProtectedRoute>
+              <ProfilePage />
+            </ProtectedRoute>
+          }
+        />
+      </Routes>
+      
+      {/* Global Real-time Components */}
+      <NotificationToast />
+      <PointsNotification />
+    </div>
+  );
+};
+
 function App() {
   return (
-    <AuthProvider>
-      <SocketProvider>
-        <Router>
-          <div className="App">
-            <Routes>
-              <Route path="/" element={<Home />} />
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/communities" element={<CommunitiesPage />} />
-              <Route path="/communities/:id" element={<CommunityDetailPage />} />
-              <Route path="/communities/:communityId/feed" element={<FeedPage />} />
-              <Route path="/courses/:id" element={<CourseDetailPage />} />
-              <Route
-                path="/communities/create"
-                element={
-                  <ProtectedRoute>
-                    <CreateCommunityPage />
-                  </ProtectedRoute>
-                }
-              />
-              <Route
-                path="/profile"
-                element={
-                  <ProtectedRoute>
-                    <ProfilePage />
-                  </ProtectedRoute>
-                }
-              />
-            </Routes>
-            
-            {/* Global Real-time Components */}
-            <NotificationToast />
-            <PointsNotification />
-          </div>
-        </Router>
-      </SocketProvider>
-    </AuthProvider>
+    <ErrorBoundary
+      onError={(error, errorInfo) => {
+        // Log error for debugging
+        console.error('React Error Boundary caught error:', error, errorInfo);
+        
+        // In production, send to error reporting service
+        if (process.env.NODE_ENV === 'production') {
+          // Example: Send to error reporting service
+          // errorReportingService.captureException(error, { extra: errorInfo });
+        }
+      }}
+    >
+      <AuthProvider>
+        <SocketProvider>
+          <Router>
+            <AppContent />
+          </Router>
+        </SocketProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   );
 }
 

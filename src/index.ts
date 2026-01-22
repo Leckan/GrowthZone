@@ -11,6 +11,8 @@ dotenv.config();
 // Import routes and middleware
 import { errorHandler } from './middleware/errorHandler';
 import { notFound } from './middleware/notFound';
+import { requestIdMiddleware } from './middleware/requestId';
+import { redisService } from './lib/redis';
 import authRoutes from './routes/auth';
 import userRoutes from './routes/users';
 import communityRoutes from './routes/communities';
@@ -42,12 +44,26 @@ const io = new Server(server, {
 
 const PORT = process.env.PORT || 3000;
 
+// Initialize Redis connection
+async function initializeRedis() {
+  try {
+    await redisService.connect();
+    console.log('✅ Redis connected successfully');
+  } catch (error) {
+    console.warn('⚠️  Redis connection failed, continuing without cache:', error);
+  }
+}
+
 // Middleware
 app.use(helmet());
 app.use(cors({
   origin: process.env.NODE_ENV === 'production' ? false : ['http://localhost:3000', 'http://localhost:3001'],
   credentials: true
 }));
+
+// Request ID middleware (before other middleware)
+app.use(requestIdMiddleware);
+
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true }));
 
@@ -56,7 +72,9 @@ app.get('/health', (req, res) => {
   res.status(200).json({ 
     status: 'OK', 
     timestamp: new Date().toISOString(),
-    environment: process.env.NODE_ENV 
+    environment: process.env.NODE_ENV,
+    requestId: req.requestId,
+    redis: redisService.isReady() ? 'connected' : 'disconnected'
   });
 });
 
@@ -92,18 +110,38 @@ app.use(errorHandler);
 
 // Start server only if not in test environment
 if (process.env.NODE_ENV !== 'test') {
-  server.listen(PORT, () => {
-    console.log(`🚀 Server running on port ${PORT}`);
-    console.log(`📊 Environment: ${process.env.NODE_ENV}`);
-    console.log(`🔗 Health check: http://localhost:${PORT}/health`);
-    
-    // Start background jobs in development for testing
-    if (process.env.NODE_ENV === 'development') {
-      console.log('📧 Starting notification jobs...');
-      // Don't auto-start in development, let users trigger manually
-    }
+  // Initialize Redis and start server
+  initializeRedis().then(() => {
+    server.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📊 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🔗 Health check: http://localhost:${PORT}/health`);
+      
+      // Start background jobs in development for testing
+      if (process.env.NODE_ENV === 'development') {
+        console.log('📧 Starting notification jobs...');
+        // Don't auto-start in development, let users trigger manually
+      }
+    });
   });
 }
+
+// Graceful shutdown
+process.on('SIGTERM', async () => {
+  console.log('SIGTERM received, shutting down gracefully');
+  await redisService.disconnect();
+  server.close(() => {
+    console.log('Process terminated');
+  });
+});
+
+process.on('SIGINT', async () => {
+  console.log('SIGINT received, shutting down gracefully');
+  await redisService.disconnect();
+  server.close(() => {
+    console.log('Process terminated');
+  });
+});
 
 // Export both app and server for testing
 export default app;

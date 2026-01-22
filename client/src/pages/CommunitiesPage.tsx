@@ -24,9 +24,10 @@ export function CommunitiesPage() {
     try {
       const response = await apiService.getCommunities();
       if (response.data) {
-        setCommunities(response.data);
+        // Handle the nested structure: response.data contains { communities: [], total: 0, hasMore: false }
+        setCommunities(Array.isArray(response.data.communities) ? response.data.communities : []);
       } else {
-        setError(response.error || 'Failed to load communities');
+        setError(response.error?.message || 'Failed to load communities');
       }
     } catch (err) {
       setError('An error occurred while loading communities');
@@ -49,10 +50,10 @@ export function CommunitiesPage() {
     }
   };
 
-  const filteredCommunities = communities.filter((community) =>
+  const filteredCommunities = Array.isArray(communities) ? communities.filter((community) =>
     community.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     community.description?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  ) : [];
 
   return (
     <div className="min-h-screen bg-gray-50">

@@ -107,15 +107,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string): Promise<boolean> => {
     dispatch({ type: 'LOGIN_START' });
     
-    const response = await apiService.login(email, password);
-    if (response.data) {
-      const { token, user } = response.data;
-      apiService.setToken(token);
-      dispatch({ type: 'LOGIN_SUCCESS', payload: { user, token } });
-      return true;
-    } else {
+    try {
+      const response = await apiService.login(email, password);
+      if (response.data) {
+        const { tokens, user } = response.data;
+        apiService.setToken(tokens.accessToken);
+        dispatch({ type: 'LOGIN_SUCCESS', payload: { user, token: tokens.accessToken } });
+        return true;
+      } else {
+        dispatch({ type: 'LOGIN_FAILURE' });
+        // If there's an error in the response, throw it so the form can handle it
+        if (response.error) {
+          const error = new Error(response.error.message || 'Login failed');
+          (error as any).response = { data: response.error };
+          throw error;
+        }
+        return false;
+      }
+    } catch (error) {
       dispatch({ type: 'LOGIN_FAILURE' });
-      return false;
+      throw error; // Re-throw the error so the form can handle it
     }
   };
 
@@ -127,15 +138,26 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }): Promise<boolean> => {
     dispatch({ type: 'LOGIN_START' });
     
-    const response = await apiService.register(userData);
-    if (response.data) {
-      const { token, user } = response.data;
-      apiService.setToken(token);
-      dispatch({ type: 'LOGIN_SUCCESS', payload: { user, token } });
-      return true;
-    } else {
+    try {
+      const response = await apiService.register(userData);
+      if (response.data) {
+        const { tokens, user } = response.data;
+        apiService.setToken(tokens.accessToken);
+        dispatch({ type: 'LOGIN_SUCCESS', payload: { user, token: tokens.accessToken } });
+        return true;
+      } else {
+        dispatch({ type: 'LOGIN_FAILURE' });
+        // If there's an error in the response, throw it so the form can handle it
+        if (response.error) {
+          const error = new Error(response.error.message || 'Registration failed');
+          (error as any).response = { data: response.error };
+          throw error;
+        }
+        return false;
+      }
+    } catch (error) {
       dispatch({ type: 'LOGIN_FAILURE' });
-      return false;
+      throw error; // Re-throw the error so the form can handle it
     }
   };
 

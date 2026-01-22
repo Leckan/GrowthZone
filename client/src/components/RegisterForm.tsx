@@ -6,6 +6,10 @@ interface RegisterFormProps {
   onSuccess?: () => void;
 }
 
+interface ValidationErrors {
+  [key: string]: string[];
+}
+
 export function RegisterForm({ onSuccess }: RegisterFormProps) {
   const [formData, setFormData] = useState({
     email: '',
@@ -15,6 +19,7 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
     displayName: '',
   });
   const [error, setError] = useState('');
+  const [validationErrors, setValidationErrors] = useState<ValidationErrors>({});
   const [isLoading, setIsLoading] = useState(false);
   
   const { register } = useAuth();
@@ -25,25 +30,95 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
       ...formData,
       [e.target.name]: e.target.value,
     });
+    
+    // Clear validation errors for this field when user starts typing
+    if (validationErrors[e.target.name]) {
+      setValidationErrors({
+        ...validationErrors,
+        [e.target.name]: []
+      });
+    }
+  };
+
+  const validatePassword = (password: string): string[] => {
+    const errors: string[] = [];
+    
+    if (password.length < 8) {
+      errors.push('Password must be at least 8 characters long');
+    }
+    
+    if (!/[a-z]/.test(password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+    
+    if (!/[A-Z]/.test(password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+    
+    if (!/\d/.test(password)) {
+      errors.push('Password must contain at least one number');
+    }
+    
+    return errors;
+  };
+
+  const validateUsername = (username: string): string[] => {
+    const errors: string[] = [];
+    
+    if (username.length < 3) {
+      errors.push('Username must be at least 3 characters long');
+    }
+    
+    if (username.length > 50) {
+      errors.push('Username must be less than 50 characters');
+    }
+    
+    if (!/^[a-zA-Z0-9_-]+$/.test(username)) {
+      errors.push('Username can only contain letters, numbers, underscores, and hyphens');
+    }
+    
+    return errors;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setValidationErrors({});
 
-    // Validation
+    // Client-side validation
+    const errors: ValidationErrors = {};
+    
+    // Email validation
+    if (!formData.email) {
+      errors.email = ['Email is required'];
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.email = ['Please enter a valid email address'];
+    }
+
+    // Username validation
+    const usernameErrors = validateUsername(formData.username);
+    if (usernameErrors.length > 0) {
+      errors.username = usernameErrors;
+    }
+
+    // Password validation
+    const passwordErrors = validatePassword(formData.password);
+    if (passwordErrors.length > 0) {
+      errors.password = passwordErrors;
+    }
+
+    // Confirm password validation
     if (formData.password !== formData.confirmPassword) {
-      setError('Passwords do not match');
-      return;
+      errors.confirmPassword = ['Passwords do not match'];
     }
 
-    if (formData.password.length < 6) {
-      setError('Password must be at least 6 characters long');
-      return;
+    // Display Name validation
+    if (formData.displayName && formData.displayName.length > 100) {
+      errors.displayName = ['Display name must be less than 100 characters'];
     }
 
-    if (formData.username.length < 3) {
-      setError('Username must be at least 3 characters long');
+    if (Object.keys(errors).length > 0) {
+      setValidationErrors(errors);
       return;
     }
 
@@ -61,13 +136,31 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
         onSuccess?.();
         navigate('/communities');
       } else {
-        setError('Registration failed. Please try again.');
+        setError('Registration failed. Please check your information and try again.');
       }
-    } catch (err) {
-      setError('An error occurred. Please try again.');
+    } catch (err: any) {
+      console.error('Registration error:', err);
+      
+      // Handle API validation errors
+      if (err.response?.data?.details) {
+        setValidationErrors(err.response.data.details);
+      } else if (err.response?.data?.message) {
+        setError(err.response.data.message);
+      } else {
+        setError('An error occurred during registration. Please try again.');
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getFieldError = (fieldName: string): string | null => {
+    const fieldErrors = validationErrors[fieldName];
+    return fieldErrors && fieldErrors.length > 0 ? fieldErrors[0] : null;
+  };
+
+  const hasFieldError = (fieldName: string): boolean => {
+    return !!(validationErrors[fieldName] && validationErrors[fieldName].length > 0);
   };
 
   return (
@@ -99,11 +192,16 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
                 type="email"
                 autoComplete="email"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                  hasFieldError('email') ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="Email address"
                 value={formData.email}
                 onChange={handleChange}
               />
+              {getFieldError('email') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('email')}</p>
+              )}
             </div>
 
             <div>
@@ -116,11 +214,19 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
                 type="text"
                 autoComplete="username"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                  hasFieldError('username') ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="Username"
                 value={formData.username}
                 onChange={handleChange}
               />
+              {getFieldError('username') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('username')}</p>
+              )}
+              <p className="mt-1 text-xs text-gray-500">
+                3-50 characters, letters, numbers, underscores, and hyphens only
+              </p>
             </div>
 
             <div>
@@ -132,11 +238,16 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
                 name="displayName"
                 type="text"
                 autoComplete="name"
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                  hasFieldError('displayName') ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="Display Name"
                 value={formData.displayName}
                 onChange={handleChange}
               />
+              {getFieldError('displayName') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('displayName')}</p>
+              )}
             </div>
 
             <div>
@@ -149,11 +260,33 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                  hasFieldError('password') ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="Password"
                 value={formData.password}
                 onChange={handleChange}
               />
+              {getFieldError('password') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('password')}</p>
+              )}
+              <div className="mt-1 text-xs text-gray-500">
+                <p>Password must contain:</p>
+                <ul className="list-disc list-inside ml-2 space-y-1">
+                  <li className={formData.password.length >= 8 ? 'text-green-600' : ''}>
+                    At least 8 characters
+                  </li>
+                  <li className={/[a-z]/.test(formData.password) ? 'text-green-600' : ''}>
+                    One lowercase letter
+                  </li>
+                  <li className={/[A-Z]/.test(formData.password) ? 'text-green-600' : ''}>
+                    One uppercase letter
+                  </li>
+                  <li className={/\d/.test(formData.password) ? 'text-green-600' : ''}>
+                    One number
+                  </li>
+                </ul>
+              </div>
             </div>
 
             <div>
@@ -166,11 +299,16 @@ export function RegisterForm({ onSuccess }: RegisterFormProps) {
                 type="password"
                 autoComplete="new-password"
                 required
-                className="mt-1 appearance-none relative block w-full px-3 py-2 border border-gray-300 placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm"
+                className={`mt-1 appearance-none relative block w-full px-3 py-2 border placeholder-gray-500 text-gray-900 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm ${
+                  hasFieldError('confirmPassword') ? 'border-red-300' : 'border-gray-300'
+                }`}
                 placeholder="Confirm Password"
                 value={formData.confirmPassword}
                 onChange={handleChange}
               />
+              {getFieldError('confirmPassword') && (
+                <p className="mt-1 text-sm text-red-600">{getFieldError('confirmPassword')}</p>
+              )}
             </div>
           </div>
 
