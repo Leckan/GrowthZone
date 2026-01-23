@@ -3,11 +3,13 @@ import { Link } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { CommunityList } from '../components/CommunityList';
 import { useAuth } from '../contexts/AuthContext';
+import { useToastContext } from '../contexts/ToastContext';
 import { Community } from '../types';
 import apiService from '../services/api';
 
 export function CommunitiesPage() {
   const { isAuthenticated } = useAuth();
+  const toast = useToastContext();
   const [communities, setCommunities] = useState<Community[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -42,11 +44,12 @@ export function CommunitiesPage() {
       if (response.data) {
         // Refresh communities list to update member count
         await loadCommunities();
+        toast.success('Successfully joined the community!');
       } else {
-        alert(response.error?.message || 'Failed to join community');
+        toast.error(response.error?.message || 'Failed to join community');
       }
     } catch (err) {
-      alert('An error occurred while joining the community');
+      toast.error('An error occurred while joining the community');
     }
   };
 

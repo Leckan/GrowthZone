@@ -3,12 +3,14 @@ import { useParams, Link } from 'react-router-dom';
 import { Navigation } from '../components/Navigation';
 import { MemberManagement } from '../components/MemberManagement';
 import { useAuth } from '../contexts/AuthContext';
+import { useToastContext } from '../contexts/ToastContext';
 import { Community } from '../types';
 import apiService from '../services/api';
 
 export function CommunityDetailPage() {
   const { id } = useParams<{ id: string }>();
   const { user } = useAuth();
+  const toast = useToastContext();
   const [community, setCommunity] = useState<Community | null>(null);
   const [members, setMembers] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -52,11 +54,12 @@ export function CommunityDetailPage() {
       const response = await apiService.joinCommunity(id);
       if (response.data) {
         await loadCommunity(); // Refresh community data
+        toast.success('Successfully joined the community!');
       } else {
-        alert(response.error?.message || 'Failed to join community');
+        toast.error(response.error?.message || 'Failed to join community');
       }
     } catch (err) {
-      alert('An error occurred while joining the community');
+      toast.error('An error occurred while joining the community');
     }
   };
 
@@ -67,11 +70,12 @@ export function CommunityDetailPage() {
       const response = await apiService.leaveCommunity(id);
       if (response.data) {
         await loadCommunity(); // Refresh community data
+        toast.success('Successfully left the community');
       } else {
-        alert(response.error?.message || 'Failed to leave community');
+        toast.error(response.error?.message || 'Failed to leave community');
       }
     } catch (err) {
-      alert('An error occurred while leaving the community');
+      toast.error('An error occurred while leaving the community');
     }
   };
 
