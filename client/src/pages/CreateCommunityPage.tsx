@@ -4,13 +4,22 @@ import { Navigation } from '../components/Navigation';
 import { CommunityForm } from '../components/CommunityForm';
 import { CommunityFormData } from '../types';
 import apiService from '../services/api';
+import { slugify } from '../utils/slugify';
 
 export function CreateCommunityPage() {
   const navigate = useNavigate();
 
   const handleSubmit = async (data: CommunityFormData): Promise<boolean> => {
     try {
-      const response = await apiService.createCommunity(data);
+      // Generate slug from community name
+      const slug = slugify(data.name);
+
+      const communityData = {
+        ...data,
+        slug
+      };
+
+      const response = await apiService.createCommunity(communityData);
       if (response.data) {
         navigate(`/communities/${response.data.id}`);
         return true;
