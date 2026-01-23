@@ -43,7 +43,7 @@ export function CommunitiesPage() {
         // Refresh communities list to update member count
         await loadCommunities();
       } else {
-        alert(response.error || 'Failed to join community');
+        alert(response.error?.message || 'Failed to join community');
       }
     } catch (err) {
       alert('An error occurred while joining the community');

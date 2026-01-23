@@ -53,7 +53,7 @@ export function CommunityDetailPage() {
       if (response.data) {
         await loadCommunity(); // Refresh community data
       } else {
-        alert(response.error || 'Failed to join community');
+        alert(response.error?.message || 'Failed to join community');
       }
     } catch (err) {
       alert('An error occurred while joining the community');
@@ -68,7 +68,7 @@ export function CommunityDetailPage() {
       if (response.data) {
         await loadCommunity(); // Refresh community data
       } else {
-        alert(response.error || 'Failed to leave community');
+        alert(response.error?.message || 'Failed to leave community');
       }
     } catch (err) {
       alert('An error occurred while leaving the community');
