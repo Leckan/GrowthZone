@@ -177,7 +177,7 @@ This implementation plan breaks down the community learning platform into discre
     - Create revenue tracking systems
     - _Requirements: 7.5_
 
-  - [ ] 10.5 Write unit tests for payment edge cases
+  - [x] 10.5 Write unit tests for payment edge cases
     - Test payment failure scenarios
     - Test subscription state transitions
     - _Requirements: 7.3, 7.4_
