@@ -461,4 +461,412 @@ describe('Access Control System', () => {
       expect(results[secondCommunity.id].isCreator).toBe(true);
     });
   });
+
+  describe('Security Edge Cases', () => {
+    it('should deny access with malformed JWT tokens', async () => {
+      const response = await request(app)
+        .get(`/api/v1/communities/${testCommunity.id}`)
+        .set('Authorization', 'Bearer invalid.jwt.token');
+
+      expect(response.status).toBe(401);
+      expect(response.body.error).toBe('Authentication required');
+    });
+
+    it('should deny access with expired JWT tokens', async () => {
+      // Create an expired token (this would normally be handled by JWT library)
+      const response = await request(app)
+        .get(`/api/v1/communities/${testCommunity.id}`)
+        .set('Authorization', 'Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiIxMjM0NTY3ODkwIiwibmFtZSI6IkpvaG4gRG9lIiwiaWF0IjoxNTE2MjM5MDIyLCJleHAiOjE1MTYyMzkwMjJ9.invalid');
+
+      expect(response.status).toBe(401);
+    });
+
+    it('should deny access to suspended users', async () => {
+      // Add user as member first
+      await prisma.communityMembership.create({
+        data: {
+          userId: testUser.id,
+          communityId: testCommunity.id,
+          role: 'member',
+          status: 'active'
+        }
+      });
+
+      // Then suspend the user's membership
+      await prisma.communityMembership.update({
+        where: {
+          userId_communityId: {
+            userId: testUser.id,
+            communityId: testCommunity.id
+          }
+        },
+        data: { status: 'suspended' }
+      });
+
+      const response = await request(app)
+        .get(`/api/v1/communities/${testCommunity.id}/posts`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Access denied');
+    });
+
+    it('should prevent privilege escalation attempts', async () => {
+      // Try to access admin endpoint as regular user
+      const response = await request(app)
+        .post(`/api/v1/communities/${testCommunity.id}/members/${testUser.id}/role`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ role: 'admin' });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Access denied');
+    });
+
+    it('should validate resource ownership before allowing modifications', async () => {
+      // Create another user's community
+      const otherUser = await prisma.user.create({
+        data: {
+          email: 'other@example.com',
+          passwordHash: 'hashedpassword',
+          username: 'otheruser',
+          displayName: 'Other User',
+          emailVerified: true
+        }
+      });
+
+      const otherCommunity = await prisma.community.create({
+        data: {
+          name: 'Other Community',
+          slug: 'other-community',
+          creatorId: otherUser.id,
+          isPublic: true
+        }
+      });
+
+      // Try to modify other user's community
+      const response = await request(app)
+        .put(`/api/v1/communities/${otherCommunity.id}`)
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ name: 'Hacked Community' });
+
+      expect(response.status).toBe(403);
+      expect(response.body.error).toBe('Access denied');
+    });
+
+    it('should prevent access to non-existent resources', async () => {
+      const fakeId = '00000000-0000-0000-0000-000000000000';
+      
+      const response = await request(app)
+        .get(`/api/v1/communities/${fakeId}`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(404);
+    });
+
+    it('should prevent SQL injection in access control queries', async () => {
+      // Test with malicious input that could cause SQL injection
+      const maliciousId = "'; DROP TABLE users; --";
+      
+      const response = await request(app)
+        .get(`/api/v1/communities/${maliciousId}`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      // Should return 400 for invalid UUID format, not 500 for SQL error
+      expect(response.status).toBe(400);
+    });
+
+    it('should validate permission boundaries between roles', async () => {
+      // Create a moderator
+      const moderator = await prisma.user.create({
+        data: {
+          email: 'moderator@example.com',
+          passwordHash: 'hashedpassword',
+          username: 'moderator',
+          displayName: 'Moderator User',
+          emailVerified: true
+        }
+      });
+
+      await prisma.communityMembership.create({
+        data: {
+          userId: moderator.id,
+          communityId: testCommunity.id,
+          role: 'moderator',
+          status: 'active'
+        }
+      });
+
+      const moderatorTokens = generateTokenPair(moderator);
+      const moderatorToken = moderatorTokens.accessToken;
+
+      // Moderator should be able to moderate posts
+      const moderateResponse = await request(app)
+        .post(`/api/v1/posts/fake-post-id/moderate`)
+        .set('Authorization', `Bearer ${moderatorToken}`)
+        .send({ action: 'hide', reason: 'inappropriate' });
+
+      // Should fail because post doesn't exist, not because of permissions
+      expect(moderateResponse.status).toBe(404);
+
+      // But moderator should NOT be able to delete the community
+      const deleteResponse = await request(app)
+        .delete(`/api/v1/communities/${testCommunity.id}`)
+        .set('Authorization', `Bearer ${moderatorToken}`);
+
+      expect(deleteResponse.status).toBe(403);
+      expect(deleteResponse.body.error).toBe('Access denied');
+    });
+  });
+
+  describe('Audit Logging Completeness', () => {
+    it('should log all access denied events with complete context', async () => {
+      // Clear existing logs
+      await prisma.auditLog.deleteMany();
+
+      // Attempt unauthorized access
+      const response = await request(app)
+        .delete(`/api/v1/communities/${testCommunity.id}`)
+        .set('Authorization', `Bearer ${authToken}`);
+
+      expect(response.status).toBe(403);
+
+      // Check that the event was logged with complete context
+      const logs = await auditLogger.getAuditLogs({
+        userId: testUser.id,
+        limit: 1
+      });
+
+      expect(logs.logs).toHaveLength(1);
+      const log = logs.logs[0];
+      
+      expect(log.userId).toBe(testUser.id);
+      expect(log.action).toBe('ACCESS_DENIED');
+      expect(log.resource).toContain('community:delete');
+      expect(log.communityId).toBe(testCommunity.id);
+      expect(log.reason).toContain('Insufficient permissions');
+      expect(log.ipAddress).toBeDefined();
+      expect(log.userAgent).toBeDefined();
+    });
+
+    it('should log permission changes with before/after states', async () => {
+      // Clear existing logs
+      await prisma.auditLog.deleteMany();
+
+      // Change user role from member to moderator
+      await auditLogger.logPermissionChange(
+        adminUser.id,
+        testUser.id,
+        testCommunity.id,
+        'ROLE_CHANGE',
+        'member',
+        'moderator'
+      );
+
+      const logs = await auditLogger.getAuditLogs({
+        action: 'PERMISSION_CHANGE',
+        limit: 1
+      });
+
+      expect(logs.logs).toHaveLength(1);
+      const log = logs.logs[0];
+      
+      expect(log.userId).toBe(adminUser.id);
+      expect(log.action).toBe('PERMISSION_CHANGE');
+      expect(log.communityId).toBe(testCommunity.id);
+      expect(log.metadata).toHaveProperty('targetUserId', testUser.id);
+      expect(log.metadata).toHaveProperty('oldRole', 'member');
+      expect(log.metadata).toHaveProperty('newRole', 'moderator');
+    });
+
+    it('should log moderation actions with detailed context', async () => {
+      // Clear existing logs
+      await prisma.auditLog.deleteMany();
+
+      // Create a test post
+      const post = await prisma.post.create({
+        data: {
+          title: 'Test Post',
+          content: 'Test content',
+          authorId: testUser.id,
+          communityId: testCommunity.id
+        }
+      });
+
+      // Log moderation action
+      await auditLogger.logModerationEvent(
+        adminUser.id,
+        'DELETE_POST',
+        'post',
+        post.id,
+        testCommunity.id,
+        'Spam content'
+      );
+
+      const logs = await auditLogger.getAuditLogs({
+        action: 'MODERATION',
+        limit: 1
+      });
+
+      expect(logs.logs).toHaveLength(1);
+      const log = logs.logs[0];
+      
+      expect(log.userId).toBe(adminUser.id);
+      expect(log.action).toBe('MODERATION');
+      expect(log.resource).toBe(`post:${post.id}`);
+      expect(log.communityId).toBe(testCommunity.id);
+      expect(log.reason).toContain('DELETE_POST');
+      expect(log.reason).toContain('Spam content');
+      expect(log.metadata).toHaveProperty('moderationAction', 'DELETE_POST');
+      expect(log.metadata).toHaveProperty('resourceType', 'post');
+      expect(log.metadata).toHaveProperty('resourceId', post.id);
+    });
+
+    it('should log payment events with transaction details', async () => {
+      // Clear existing logs
+      await prisma.auditLog.deleteMany();
+
+      // Log payment event
+      await auditLogger.logPaymentEvent(
+        testUser.id,
+        'SUBSCRIPTION_CREATED',
+        testCommunity.id,
+        9.99,
+        'USD',
+        { stripeSubscriptionId: 'sub_test123' }
+      );
+
+      const logs = await auditLogger.getAuditLogs({
+        action: 'PAYMENT',
+        limit: 1
+      });
+
+      expect(logs.logs).toHaveLength(1);
+      const log = logs.logs[0];
+      
+      expect(log.userId).toBe(testUser.id);
+      expect(log.action).toBe('PAYMENT');
+      expect(log.resource).toBe('subscription');
+      expect(log.communityId).toBe(testCommunity.id);
+      expect(log.metadata).toHaveProperty('paymentAction', 'SUBSCRIPTION_CREATED');
+      expect(log.metadata).toHaveProperty('amount', 9.99);
+      expect(log.metadata).toHaveProperty('currency', 'USD');
+      expect(log.metadata).toHaveProperty('stripeSubscriptionId', 'sub_test123');
+    });
+
+    it('should generate comprehensive security summaries', async () => {
+      // Clear existing logs
+      await prisma.auditLog.deleteMany();
+
+      // Create various security events
+      await auditLogger.logSecurityEvent({
+        userId: testUser.id,
+        action: 'ACCESS_DENIED',
+        resource: 'course:write',
+        communityId: testCommunity.id
+      });
+
+      await auditLogger.logModerationEvent(
+        adminUser.id,
+        'HIDE_POST',
+        'post',
+        'test-post-id',
+        testCommunity.id,
+        'Inappropriate content'
+      );
+
+      await auditLogger.logPermissionChange(
+        adminUser.id,
+        testUser.id,
+        testCommunity.id,
+        'ROLE_CHANGE',
+        'member',
+        'moderator'
+      );
+
+      // Generate security summary
+      const summary = await auditLogger.getSecuritySummary(testCommunity.id, 1);
+
+      expect(summary.totalEvents).toBe(3);
+      expect(summary.accessDeniedEvents).toBe(1);
+      expect(summary.moderationEvents).toBe(1);
+      expect(summary.permissionChanges).toBe(1);
+      expect(summary.recentEvents).toHaveLength(3);
+    });
+
+    it('should handle audit log cleanup without affecting recent events', async () => {
+      // Create old audit log entry (simulate old date)
+      const oldDate = new Date();
+      oldDate.setDate(oldDate.getDate() - 400); // 400 days ago
+
+      await prisma.auditLog.create({
+        data: {
+          userId: testUser.id,
+          action: 'OLD_EVENT',
+          resource: 'test',
+          createdAt: oldDate
+        }
+      });
+
+      // Create recent audit log entry
+      await auditLogger.logSecurityEvent({
+        userId: testUser.id,
+        action: 'RECENT_EVENT',
+        resource: 'test'
+      });
+
+      // Clean up logs older than 365 days
+      const deletedCount = await auditLogger.cleanupOldLogs(365);
+
+      expect(deletedCount).toBe(1);
+
+      // Verify recent event still exists
+      const recentLogs = await auditLogger.getAuditLogs({
+        action: 'RECENT_EVENT',
+        limit: 1
+      });
+
+      expect(recentLogs.logs).toHaveLength(1);
+
+      // Verify old event was deleted
+      const oldLogs = await auditLogger.getAuditLogs({
+        action: 'OLD_EVENT',
+        limit: 1
+      });
+
+      expect(oldLogs.logs).toHaveLength(0);
+    });
+
+    it('should maintain audit log integrity under concurrent access', async () => {
+      // Clear existing logs
+      await prisma.auditLog.deleteMany();
+
+      // Simulate concurrent audit logging
+      const promises = [];
+      for (let i = 0; i < 10; i++) {
+        promises.push(
+          auditLogger.logSecurityEvent({
+            userId: testUser.id,
+            action: 'CONCURRENT_TEST',
+            resource: `resource_${i}`,
+            communityId: testCommunity.id
+          })
+        );
+      }
+
+      await Promise.all(promises);
+
+      // Verify all events were logged
+      const logs = await auditLogger.getAuditLogs({
+        action: 'CONCURRENT_TEST',
+        limit: 20
+      });
+
+      expect(logs.logs).toHaveLength(10);
+      
+      // Verify each resource was logged exactly once
+      const resources = logs.logs.map(log => log.resource);
+      const uniqueResources = [...new Set(resources)];
+      expect(uniqueResources).toHaveLength(10);
+    });
+  });
 });

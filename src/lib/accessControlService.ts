@@ -88,7 +88,8 @@ export class AccessControlService {
       if (isCreator) {
         hasPaidAccess = true;
       } else if (!community.priceMonthly && !community.priceYearly) {
-        hasPaidAccess = hasAccess; // Free community
+        // Free community - only active members get paid access
+        hasPaidAccess = hasAccess && membership !== null && membership.status === 'active';
       } else if (membership && membership.status === 'active') {
         // Check for active subscription
         const subscription = await prisma.subscription.findFirst({
@@ -313,6 +314,29 @@ export class AccessControlService {
         return {
           allowed: false,
           reason: access.reason || 'Access denied to community'
+        };
+      }
+
+      // For write/admin permissions, require active membership (not just basic access)
+      const requiresActiveMembership = permission.includes(':write') || 
+                                     permission.includes(':admin') || 
+                                     permission.includes(':moderate') || 
+                                     permission.includes(':delete') ||
+                                     permission.includes(':publish');
+
+      if (requiresActiveMembership && !access.isCreator && 
+          (!access.membership || access.membership.status !== 'active')) {
+        await auditLogger.logSecurityEvent({
+          userId,
+          action: 'ACCESS_DENIED',
+          resource: permission,
+          reason: 'Active membership required for this action',
+          communityId
+        });
+
+        return {
+          allowed: false,
+          reason: 'Active membership required for this action'
         };
       }
 

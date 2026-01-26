@@ -53,7 +53,7 @@ export function createPropertyTest(
 /**
  * Wrapper for fc.assert with consistent configuration
  */
-export function assertProperty(property: fc.IProperty<any>) {
+export function assertProperty(property: fc.IProperty<any> | fc.IAsyncProperty<any>) {
   return fc.assert(property, propertyTestConfig);
 }
 
